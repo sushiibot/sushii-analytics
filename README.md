@@ -1,14 +1,15 @@
 # sushii-analytics
 
-Analytics bot for gathering metrics for communities. Designed for end-of-year reports to share with your community.
+Analytics bot for gathering metrics for communities. Intended for end-of-year
+reports to share with your community.
 
 ## Features
 
-This bot does not have any commands or interactions. It is designed to be run in the background and will not respond to any commands.
+This bot does not have any commands or interactions. It is designed to be run in
+the background and will not respond to any commands.
 
-It simply saves all Discord gateway events to a SQLite database for later analysis.
-
-This is meant to be a private bot and with transparency on what data is being collected.
+It simply saves all Discord gateway events to a SQLite database for later
+analysis and replicated via Litestream to a remote S3-compatible storage.
 
 ## Configuration
 
