@@ -14,7 +14,7 @@ if [ -f "$DATABASE_URI" ]; then
 else
 	if [ "${RESTORE_DB}" = "true" ]; then
 		echo "No database found at $DATABASE_URI, restoring from replica if exists"
-		litestream restore -v -if-replica-exists "$DATABASE_URI"
+		litestream restore -if-replica-exists "$DATABASE_URI"
 	else
 		echo "No database found at $DATABASE_URI but RESTORE_DB is not set to true, skipping restore"
 	fi

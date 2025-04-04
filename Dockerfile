@@ -10,10 +10,8 @@ FROM oven/bun:1.2.7-debian
 
 WORKDIR /app
 
-# Install glibc for litestream
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    libc6 libc6-dev libc6-dbg \
     # root certs for ssl
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*

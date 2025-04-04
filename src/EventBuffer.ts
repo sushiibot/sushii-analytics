@@ -3,6 +3,30 @@ import type { DB } from "./database/db";
 import { getLogger } from "./logger";
 import { events } from "./database/schema";
 
+function removeCircularReference<T extends Record<string, any>>(obj: T): T {
+  const seen = new WeakSet();
+
+  const recurse = (current: Record<string, any>): void => {
+    seen.add(current);
+
+    for (const [k, v] of Object.entries(current)) {
+      if (v !== null && typeof v === "object") {
+        if (seen.has(v)) {
+          delete current[k];
+        } else {
+          recurse(v);
+        }
+      }
+    }
+  };
+
+  // Create a deep copy to avoid modifying the original object
+  const copy = JSON.parse(JSON.stringify(obj)) as T;
+  recurse(copy);
+
+  return copy;
+}
+
 type BufferItem = {
   event: GatewayDispatchPayload;
   timestamp: number;
@@ -86,11 +110,14 @@ export class EventBuffer {
 
     for (const item of bufferToProcess) {
       try {
+        // Remove any cyclic references from the payload
+        const cleanedPayload = removeCircularReference(item.event.d);
+
         values.push({
           time: item.timestamp,
           type: item.event.t,
           // Don't stringify the payload, store directly as JSON for JSONB
-          payload: item.event.d,
+          payload: cleanedPayload,
         });
       } catch (err) {
         this.logger.error(
