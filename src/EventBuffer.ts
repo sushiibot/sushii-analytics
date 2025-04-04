@@ -20,11 +20,9 @@ function removeCircularReference<T extends Record<string, any>>(obj: T): T {
     }
   };
 
-  // Create a deep copy to avoid modifying the original object
-  const copy = JSON.parse(JSON.stringify(obj)) as T;
-  recurse(copy);
+  recurse(obj);
 
-  return copy;
+  return obj;
 }
 
 type BufferItem = {
