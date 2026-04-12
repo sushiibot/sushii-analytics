@@ -1,11 +1,14 @@
+import { trace } from "@opentelemetry/api";
 import pino from "pino";
 
 const logger = pino({
   level: "debug",
-  transport: {
-    // Use pino-pretty by default in production, technically not recommended in
-    // production. Remove this to use the default pino JSON logger.
-    target: "pino-pretty",
+  mixin() {
+    const span = trace.getActiveSpan();
+    if (!span) return {};
+    const { traceId, spanId, traceFlags } = span.spanContext();
+    if (!traceId) return {};
+    return { trace_id: traceId, span_id: spanId, trace_flags: traceFlags };
   },
 });
 
