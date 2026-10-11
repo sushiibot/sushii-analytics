@@ -13,7 +13,7 @@ community.
 ## Who is responsible
 
 sushii-analytics is run by the sushii developers, based in the United States. They are the
-data controller. Contact: contact@sushii.xyz.
+data controller. Contact: contact@sushii.bot.
 
 ## Where the data comes from
 
@@ -171,5 +171,5 @@ in our support server and update the date above.
 
 ## Contact
 
-- Email: contact@sushii.xyz
+- Email: contact@sushii.bot
 - Discord support server: https://discord.gg/PjDRRXSSAF

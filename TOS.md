@@ -75,5 +75,5 @@ control. If any part of these Terms can't be enforced, the rest still applies.
 
 ## Contact
 
-- Email: contact@sushii.xyz
+- Email: contact@sushii.bot
 - Discord support server: https://discord.gg/PjDRRXSSAF
