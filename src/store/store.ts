@@ -32,6 +32,8 @@ export function openFile(
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA busy_timeout = 5000");
   db.exec("PRAGMA synchronous = NORMAL");
+  // Keeps VACUUM and sort temp files off the container's unencrypted disk.
+  db.exec("PRAGMA temp_store = MEMORY");
   if (file === "members") db.exec("PRAGMA secure_delete = ON");
   initSchema(db, file);
   return db;

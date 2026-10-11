@@ -1,6 +1,6 @@
 # Terms of Service — sushii-analytics
 
-Last updated: [TODO: publication date]
+Last updated: October 11, 2026
 
 These Terms of Service ("Terms") apply to anyone who adds sushii-analytics (the "Service",
 "the bot", "we", "us") to a Discord server or manages it there. By adding the bot, you agree

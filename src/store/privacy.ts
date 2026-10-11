@@ -14,6 +14,7 @@ export function openPrivacyDb(dataDir: string): Database {
   const db = new Database(path.join(dataDir, "privacy.sqlite"), { create: true });
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA busy_timeout = 5000");
+  db.exec("PRAGMA temp_store = MEMORY");
   db.exec(`CREATE TABLE IF NOT EXISTS suppressed_users (
     user_id TEXT NOT NULL,
     scope TEXT NOT NULL,

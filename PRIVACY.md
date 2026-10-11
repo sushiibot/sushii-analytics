@@ -1,6 +1,6 @@
 # Privacy Policy — sushii-analytics
 
-Last updated: [TODO: publication date]
+Last updated: October 11, 2026
 
 This policy covers the sushii-analytics Discord application (application ID
 1357574696870350969), called "the bot", "we" or "us" below. It does not cover other
@@ -66,6 +66,12 @@ For members who are not bots, we store:
 - if we saw you join a server: when you joined, when you first posted, whether you posted in
   your first weeks, and when you left (if you did).
 
+### Opt-out list
+
+If you ask us to delete your data or to leave the leaderboard, we keep your Discord user ID on
+a short list, so we don't record you again or show you in a summary. Nothing else is stored
+with it.
+
 We do **not** store usernames, display names, nicknames, avatars, message text,
 attachments, voice activity or online status.
 
@@ -92,10 +98,10 @@ We do not sell your information, and we do not share it for advertising.
 | Hetzner Online GmbH | Server hosting | Germany |
 | Backblaze, Inc. | Encrypted backups | United States |
 
-Backups are sent from the EU to the US under [TODO: Backblaze's Data Processing Addendum
-with the EU Standard Contractual Clauses — confirm].
+Backups are transferred from the EU to the US under Backblaze's Data Processing Addendum,
+which incorporates the EU Standard Contractual Clauses.
 
-Our own monitoring runs on the same Hetzner servers. It keeps operational logs for [TODO: 30, once Loki retention is configured]
+Our own monitoring runs on the same Hetzner servers. It keeps operational logs for 30
 days. The logs contain server IDs, but no message content and no user IDs.
 
 ## Retention
@@ -104,26 +110,13 @@ days. The logs contain server IDs, but no message content and no user IDs.
 |---|---|
 | Message content | Not stored. It is processed in memory only. |
 | Per-member counts | In a separate file for each calendar year, by Korea Standard Time. We delete it by January 31 of the following year, after the summary is made. Statistics for members who joined in late December use the data available up to then. |
-| Server-level counts | Up to 2 years, for comparing with the previous year. After that we delete them. |
+| Server-level counts | Until January 31 of the second year after collection, for comparing with the previous year. After that we delete them. |
+| Opt-out list | While the bot runs, so your request keeps applying. Ask us and we remove it, but you may be counted again. |
 | Backups | Older backup versions are permanently deleted within 7 days. |
 
 If the bot is removed from a server, it stops collecting immediately. We delete that
 server's data within 30 days, or sooner if its admins ask. If sushii-analytics shuts down,
 we delete all stored data and backups. If we receive data by mistake, we delete it.
-
-### Data from earlier versions
-
-From April 2025 until [TODO: cutover date], the bot stored every event it received. That
-included:
-
-- message text;
-- usernames, nicknames and avatars;
-- role changes;
-- typing and voice activity.
-
-These copies exist on our server, in a backup in the United States, and on the operator's
-computer. The backup copy is not encrypted. We are converting this data into the counts
-described above. We will delete every copy by [TODO: date] and then update this policy.
 
 ## Your rights
 

@@ -349,3 +349,41 @@ describe("without the Message Content intent", () => {
     expect(cov).toMatchObject({ ready_samples: 1, content_intent_samples: 0, members_intent_samples: 0 });
   });
 });
+
+describe("private channel detection", () => {
+  const names = () =>
+    Object.fromEntries(
+      (store.get(2026, "guild").query("SELECT channel_id, name FROM channels").all() as any[]).map((r) => [r.channel_id, r.name])
+    );
+
+  test("member-granted channels and role-gated servers hide names", () => {
+    const agg = new Aggregator();
+    agg.apply("GUILD_CREATE", {
+      id: G,
+      roles: [{ id: G, permissions: "0" }],
+      channels: [
+        { id: "a", type: 0, name: "rules", permission_overwrites: [{ id: G, type: 0, allow: "1024", deny: "0" }] },
+        { id: "b", type: 0, name: "verified-chat", permission_overwrites: [{ id: "role1", type: 0, allow: "1024", deny: "0" }] },
+      ],
+    }, T0);
+    agg.apply("CHANNEL_CREATE", {
+      id: "c", guild_id: G, type: 0, name: "ticket-alice",
+      permission_overwrites: [{ id: G, type: 0, allow: "1024", deny: "0" }, { id: "u1", type: 1, allow: "1024", deny: "0" }],
+    }, T0);
+    flushAll(agg);
+    expect(names()).toEqual({ a: "rules", b: "", c: "" });
+  });
+
+  test("dimensions() from the client cache fills a new year's file", () => {
+    const agg = new Aggregator();
+    agg.dimensions(G, Date.UTC(2027, 0, 1, 3), {
+      everyonePermissions: "1024",
+      channels: [{ id: "x", type: 0, name: "general", parent_id: null, permission_overwrites: [] }],
+      emojis: [{ id: "e1", name: "wave", animated: false }],
+    });
+    flushAll(agg);
+    const g = store.get(2027, "guild");
+    expect(g.query("SELECT channel_id, name FROM channels").all()).toEqual([{ channel_id: "x", name: "general" }]);
+    expect(g.query("SELECT emoji_id, name FROM guild_emoji").all()).toEqual([{ emoji_id: "e1", name: "wave" }]);
+  });
+});

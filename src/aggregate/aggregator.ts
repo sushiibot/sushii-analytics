@@ -31,7 +31,6 @@ const IGNORED = new Set([
   "GUILD_SCHEDULED_EVENT_DELETE",
   "GUILD_SCHEDULED_EVENT_USER_REMOVE",
   "GUILD_ROLE_CREATE",
-  "GUILD_ROLE_UPDATE",
   "GUILD_ROLE_DELETE",
   "GUILD_STICKERS_UPDATE",
   "GUILD_SOUNDBOARD_SOUND_CREATE",
@@ -80,16 +79,25 @@ class Lru {
   }
 }
 
-function isPrivate(guildId: string, channel: any): boolean {
-  const everyone = Array.isArray(channel.permission_overwrites)
-    ? channel.permission_overwrites.find((o: any) => o?.id === guildId)
-    : undefined;
-  if (!everyone?.deny) return false;
+function hasView(bits: unknown): boolean {
   try {
-    return (BigInt(everyone.deny) & VIEW_CHANNEL) !== 0n;
+    return (BigInt(bits as string) & VIEW_CHANNEL) !== 0n;
   } catch {
-    return true;
+    return false;
   }
+}
+
+/**
+ * True unless @everyone can see the channel. Ticket and modmail channels are
+ * often granted to single members, so a member-level allow also counts as private.
+ */
+function isPrivate(guildId: string, channel: any, everyoneCanView: boolean): boolean {
+  const overwrites: any[] = Array.isArray(channel.permission_overwrites) ? channel.permission_overwrites : [];
+  const everyone = overwrites.find((o) => o?.id === guildId);
+  if (everyone && hasView(everyone.deny)) return true;
+  if (overwrites.some((o) => o?.type === 1 && hasView(o.allow))) return true;
+  if (everyone && hasView(everyone.allow)) return false;
+  return !everyoneCanView;
 }
 
 function codePoints(s: string): number {
@@ -121,6 +129,8 @@ export class Aggregator {
   private readonly seenMessages = new Lru(20_000);
   private readonly seenEdits = new Lru(20_000);
   private readonly knownEmojis = new Map<string, Set<string>>();
+  /** Whether the @everyone role has View Channel server-wide; unknown counts as yes. */
+  private readonly everyoneCanView = new Map<string, boolean>();
   /** Users who asked for deletion; no per-member data is recorded for them. */
   private forgotten = new Set<string>();
 
@@ -226,6 +236,11 @@ export class Aggregator {
             premium_tier: d.premium_tier ?? null,
             role_count: Array.isArray(d.roles) ? d.roles.length : null,
           });
+        }
+        return;
+      case "GUILD_ROLE_UPDATE":
+        if (d.guild_id && d.role?.id === d.guild_id) {
+          this.everyoneCanView.set(d.guild_id, hasView(d.role.permissions));
         }
         return;
       case "GUILD_EMOJIS_UPDATE":
@@ -360,7 +375,9 @@ export class Aggregator {
     let name: string | null = null;
     // Thread names are user-written text, and private channels can be named after
     // a person (tickets, modmail). Neither is stored; "" also clears a stored name.
-    if (!THREAD_TYPES.has(c.type)) name = isPrivate(guildId, c) ? "" : (c.name ?? null);
+    if (!THREAD_TYPES.has(c.type)) {
+      name = isPrivate(guildId, c, this.everyoneCanView.get(guildId) ?? true) ? "" : (c.name ?? null);
+    }
     this.file(t, "guild").upsert("channels", [guildId, c.id], {
       type: typeof c.type === "number" ? c.type : null,
       parent_id: c.parent_id ?? null,
@@ -393,6 +410,8 @@ export class Aggregator {
 
   private guildCreate(d: any, t: number) {
     if (!d.id || d.unavailable) return;
+    const everyone = Array.isArray(d.roles) ? d.roles.find((r: any) => r?.id === d.id) : undefined;
+    if (everyone) this.everyoneCanView.set(d.id, hasView(everyone.permissions));
     for (const c of d.channels ?? []) this.channel(d.id, c, t);
     for (const th of d.threads ?? []) this.channel(d.id, th, t);
     if (Array.isArray(d.emojis)) this.emojis(d.id, d.emojis, t);
@@ -424,6 +443,21 @@ export class Aggregator {
       channel_count: s.channelCount,
       role_count: s.roleCount,
     });
+  }
+
+  /**
+   * Refreshes channel and emoji dimensions from the client cache. Resumed
+   * sessions don't resend GUILD_CREATE, so a new year's file would otherwise
+   * have none until the next reconnect.
+   */
+  dimensions(
+    guildId: string,
+    t: number,
+    d: { everyonePermissions: string | null; channels: any[]; emojis: any[] }
+  ): void {
+    if (d.everyonePermissions !== null) this.everyoneCanView.set(guildId, hasView(d.everyonePermissions));
+    for (const c of d.channels) this.channel(guildId, c, t);
+    this.emojis(guildId, d.emojis, t);
   }
 
   recordReadySample(t: number, intents: { content: boolean; members: boolean }): void {

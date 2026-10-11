@@ -1,6 +1,18 @@
 #!/bin/bash
 set -euo pipefail
 
+# Secrets arrive as files (compose `secrets:`, stored on encrypted storage) so they
+# never appear in the compose file or Docker's container config on the plain disk.
+if [ -d /run/secrets ]; then
+	for f in /run/secrets/*; do
+		[ -f "$f" ] || continue
+		name=$(basename "$f" | tr '[:lower:]' '[:upper:]')
+		if [ -z "${!name:-}" ]; then
+			export "$name=$(cat "$f")"
+		fi
+	done
+fi
+
 DATA_DIR=${DATA_DIR:-"/app/data/v2"}
 export DATA_DIR
 mkdir -p "$DATA_DIR"
@@ -21,15 +33,20 @@ if [ "${RESTORE_DB:-false}" = "true" ]; then
 	# replication, so list the files that can be live right now.
 	restore_cfg=$(mktemp)
 	trap 'rm -f "$restore_cfg"' EXIT
-	# Last year's members file is only live in January. After that it may have
-	# been deleted on purpose, and restoring it would bring the data back.
-	targets=("privacy.sqlite" "$year/guild.sqlite" "$year/members.sqlite" "$((year - 1))/guild.sqlite")
+	# Required: this year's files. If one is missing locally and can't be restored,
+	# starting would create an empty file that Litestream then replicates over the
+	# real backup, so fail instead.
+	required=("privacy.sqlite" "$year/guild.sqlite" "$year/members.sqlite")
+	# Optional: older files that may legitimately be gone. Last year's members file
+	# and the guild file from two years ago are only live in January; after that they
+	# may have been deleted on purpose, and restoring would bring the data back.
+	optional=("$((year - 1))/guild.sqlite")
 	if [ "$(TZ=Asia/Seoul date +%m)" = "01" ]; then
-		targets+=("$((year - 1))/members.sqlite")
+		optional+=("$((year - 1))/members.sqlite" "$((year - 2))/guild.sqlite")
 	fi
 
 	echo "dbs:" >"$restore_cfg"
-	for rel in "${targets[@]}"; do
+	for rel in "${required[@]}" "${optional[@]}"; do
 		cat >>"$restore_cfg" <<EOF
   - path: $DATA_DIR/$rel
     replica:
@@ -44,9 +61,17 @@ if [ "${RESTORE_DB:-false}" = "true" ]; then
 EOF
 	done
 
-	for rel in "${targets[@]}"; do
+	# Existing local files skip the restore, so a normal restart never needs B2.
+	for rel in "${required[@]}"; do
+		[ -f "$DATA_DIR/$rel" ] && continue
 		mkdir -p "$(dirname "$DATA_DIR/$rel")"
-		litestream restore -config "$restore_cfg" -if-db-not-exists -if-replica-exists "$DATA_DIR/$rel"
+		litestream restore -config "$restore_cfg" -if-replica-exists "$DATA_DIR/$rel"
+	done
+	for rel in "${optional[@]}"; do
+		[ -f "$DATA_DIR/$rel" ] && continue
+		mkdir -p "$(dirname "$DATA_DIR/$rel")"
+		litestream restore -config "$restore_cfg" -if-replica-exists "$DATA_DIR/$rel" ||
+			echo "Optional restore of $rel failed; continuing" >&2
 	done
 	rm -f "$restore_cfg"
 	trap - EXIT

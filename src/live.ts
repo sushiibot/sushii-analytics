@@ -124,7 +124,19 @@ export function startLive(client: Client, opts: LiveOptions) {
     const pending = aggregator.take();
     if (pending.isEmpty) return;
     const started = Date.now();
-    const { failed, errors } = flush(pending, store);
+    let result: ReturnType<typeof flush>;
+    try {
+      result = flush(pending, store);
+    } catch (err) {
+      // Something failed before the per-file transactions; keep everything for the next tick.
+      for (const { year, file, deltas } of pending.files.values()) {
+        aggregator.deltas.for(year, file).mergeFrom(deltas);
+      }
+      flushFailures.add(1, { file: "all" });
+      logger.error({ err }, "Flush failed; deltas kept for retry");
+      return;
+    }
+    const { failed, errors } = result;
     for (const { year, file, deltas } of failed.files.values()) {
       aggregator.deltas.for(year, file).mergeFrom(deltas);
     }
@@ -156,6 +168,25 @@ export function startLive(client: Client, opts: LiveOptions) {
         premiumTier: guild.premiumTier,
         channelCount: guild.channels.cache.size,
         roleCount: guild.roles.cache.size,
+      });
+      aggregator.dimensions(guild.id, now, {
+        everyonePermissions: guild.roles.everyone?.permissions.bitfield.toString() ?? null,
+        channels: guild.channels.cache.map((c) => ({
+          id: c.id,
+          type: c.type,
+          parent_id: c.parentId ?? null,
+          name: "name" in c ? c.name : null,
+          permission_overwrites:
+            "permissionOverwrites" in c
+              ? c.permissionOverwrites.cache.map((o) => ({
+                  id: o.id,
+                  type: o.type,
+                  allow: o.allow.bitfield.toString(),
+                  deny: o.deny.bitfield.toString(),
+                }))
+              : [],
+        })),
+        emojis: guild.emojis.cache.map((e) => ({ id: e.id, name: e.name, animated: e.animated })),
       });
     }
   };
