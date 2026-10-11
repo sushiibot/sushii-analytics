@@ -2,7 +2,7 @@ import type { FileKind } from "../store/tables";
 import { Deltas, type Value } from "./deltas";
 import { DAY_MS, kstDay, kstDayOfMonth, kstMonth, kstYear, utcHour } from "./time";
 
-const LINK_RE = /https?:\/\//;
+const LINK_RE = /https?:\/\//i;
 const MENTION_RE = /<@[!&]?\d+>/;
 const THREAD_TYPES = new Set([10, 11, 12]);
 const HUMAN_MESSAGE_TYPES = new Set([0, 19]);
