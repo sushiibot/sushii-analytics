@@ -1,16 +1,22 @@
-# Use env vars for keys
-# LITESTREAM_ACCESS_KEY_ID
-# LITESTREAM_SECRET_ACCESS_KEY
-# access-key-id: xxx
-# secret-access-key: xxx
-
-# Default Litestream configuration
+# Litestream v0.5. Replicates every year file under /app/data/v2, including
+# new years as they appear. The legacy /app/data/db.sqlite is deliberately not
+# listed, so nothing here can prune or overwrite its old replica.
+#
+# Env: LITESTREAM_ACCESS_KEY_ID, LITESTREAM_SECRET_ACCESS_KEY, LITESTREAM_BUCKET,
+# LITESTREAM_PATH (must differ from the legacy prefix), LITESTREAM_ENDPOINT,
+# LITESTREAM_SSE_CUSTOMER_KEY (base64 32-byte key; losing it makes backups unreadable).
 dbs:
-  # Match the path for default modmail database path
-  - path: /app/data/db.sqlite
-    replicas:
-      - type: s3
-        bucket: $LITESTREAM_BUCKET
-        path: $LITESTREAM_PATH
-        endpoint: $LITESTREAM_ENDPOINT
-        force-path-style: $LITESTREAM_FORCE_PATH_STYLE
+  - dir: /app/data/v2
+    pattern: "*.sqlite"
+    recursive: true
+    watch: true
+    replica:
+      type: s3
+      bucket: ${LITESTREAM_BUCKET}
+      path: ${LITESTREAM_PATH}
+      endpoint: ${LITESTREAM_ENDPOINT}
+      force-path-style: true
+      # Required by Backblaze B2.
+      sign-payload: true
+      sse-customer-algorithm: AES256
+      sse-customer-key: ${LITESTREAM_SSE_CUSTOMER_KEY}

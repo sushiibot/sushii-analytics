@@ -5,19 +5,23 @@
   "scripts": {
     "start": "bun run ./src/index.ts",
     "dev": "bun run --watch ./src/index.ts | pino-pretty",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "backfill": "bun run ./src/cli/backfill.ts",
+    "merge": "bun run ./src/cli/merge.ts",
+    "derive": "bun run ./src/cli/derive.ts",
+    "delete-user": "bun run ./src/cli/delete-user.ts",
+    "delete-guild": "bun run ./src/cli/delete-guild.ts",
+    "opt-out": "bun run ./src/cli/opt-out.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "drizzle-kit": "^0.30.6",
     "pino-pretty": "^13.0.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.2",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/context-async-hooks": "^1.30.1",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.57.1",
@@ -31,7 +35,6 @@
     "discord-api-types": "^0.37.119",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
-    "drizzle-orm": "^0.41.0",
     "pino": "^9.6.0",
     "zod": "^3.24.2"
   }

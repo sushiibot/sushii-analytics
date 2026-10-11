@@ -1,12 +1,15 @@
-FROM golang:1.23-bookworm AS litestream
+FROM --platform=$BUILDPLATFORM golang:1.25-bookworm AS litestream
+ARG TARGETOS
+ARG TARGETARCH
 
-# Static build of litestream
-RUN go install \
-    -ldflags "-s -w -extldflags "-static"" \
-    -tags osusergo,netgo,sqlite_omit_load_extension \
-     github.com/benbjohnson/litestream/cmd/litestream@latest
+# v0.5 uses a pure-Go SQLite driver, so it cross-compiles without CGO.
+# Cross builds land in /go/bin/<os>_<arch>/, native ones in /go/bin/.
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go install \
+    -ldflags "-s -w" \
+     github.com/benbjohnson/litestream/cmd/litestream@v0.5.17 \
+    && mkdir /out && cp "$(find /go/bin -name litestream -type f | head -1)" /out/litestream
 
-FROM oven/bun:1.2.7-debian
+FROM oven/bun:1.4.2-debian
 
 LABEL org.opencontainers.image.source=https://github.com/sushiibot/sushii-analytics
 LABEL org.opencontainers.image.description="Analytics Discord Bot"
@@ -20,20 +23,19 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy litestream binary from the previous stage
-COPY --from=litestream /go/bin/litestream /usr/local/bin/litestream
+COPY --from=litestream /out/litestream /usr/local/bin/litestream
 
 # Copy default configuration for litestream
 COPY ./litestream.yml /etc/litestream.yml
 
 # Copy package.json and lockfile first for better caching
-COPY package.json bun.lockb* ./
+COPY package.json bun.lock ./
 
 # Install dependencies
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --production
 
 # Application source code
 COPY ./tsconfig.json ./
-COPY ./drizzle ./drizzle
 COPY ./src ./src
 
 # Entrypoint script
