@@ -120,7 +120,9 @@ export const TABLES = {
   ingest_coverage_hourly: {
     file: "guild",
     keys: { hour: "INTEGER" },
-    cols: counters("events", "ready_samples"),
+    // Samples (one per flush tick) while each privileged intent was enabled, so
+    // reports can tell missing data from zero activity.
+    cols: counters("events", "ready_samples", "content_intent_samples", "members_intent_samples"),
   },
   unknown_events_daily: {
     file: "guild",

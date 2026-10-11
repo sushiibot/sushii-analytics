@@ -108,8 +108,15 @@ function parseTime(iso: unknown, fallback: number): number {
  * Turns raw gateway dispatches into counter deltas. Holds no user data beyond
  * short dedupe windows and the current emoji list per guild.
  */
+export interface AggregatorOptions {
+  /** Without the Message Content intent, text, attachments and polls arrive empty. */
+  messageContent: boolean;
+}
+
 export class Aggregator {
   deltas = new Deltas();
+
+  constructor(private readonly opts: AggregatorOptions = { messageContent: true }) {}
 
   private readonly seenMessages = new Lru(20_000);
   private readonly seenEdits = new Lru(20_000);
@@ -244,7 +251,7 @@ export class Aggregator {
     const vals: Record<string, Value> = { messages: 1 };
     if (isBot) vals.bot_messages = 1;
 
-    if (typeof d.content === "string") {
+    if (this.opts.messageContent && typeof d.content === "string") {
       vals.msgs_with_content = 1;
       vals.total_length = codePoints(d.content);
       if (d.content.length > 0) {
@@ -257,11 +264,13 @@ export class Aggregator {
       vals.replies = 1;
       if (d.message_reference.type === FORWARD_REFERENCE_TYPE) vals.forwards = 1;
     }
-    if (Array.isArray(d.attachments) && d.attachments.length > 0) {
-      vals.msgs_with_attachments = 1;
-      vals.attachments = d.attachments.length;
+    if (this.opts.messageContent) {
+      if (Array.isArray(d.attachments) && d.attachments.length > 0) {
+        vals.msgs_with_attachments = 1;
+        vals.attachments = d.attachments.length;
+      }
+      if (d.poll) vals.polls_created = 1;
     }
-    if (d.poll) vals.polls_created = 1;
     this.guildHourly(t, guildId, vals);
 
     if (d.channel_id) {
@@ -417,7 +426,11 @@ export class Aggregator {
     });
   }
 
-  recordReadySample(t: number): void {
-    this.file(t, "guild").upsert("ingest_coverage_hourly", [utcHour(t)], { ready_samples: 1 });
+  recordReadySample(t: number, intents: { content: boolean; members: boolean }): void {
+    this.file(t, "guild").upsert("ingest_coverage_hourly", [utcHour(t)], {
+      ready_samples: 1,
+      content_intent_samples: intents.content ? 1 : 0,
+      members_intent_samples: intents.members ? 1 : 0,
+    });
   }
 }

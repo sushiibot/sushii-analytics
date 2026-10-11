@@ -333,3 +333,19 @@ describe("retention deadlines", () => {
     expect(overdueFiles(dir, at(2028, 0, 31))).toEqual(["2026/members", "2026/guild"]);
   });
 });
+
+describe("without the Message Content intent", () => {
+  test("content-derived counters are skipped, the rest still count", () => {
+    const agg = new Aggregator({ messageContent: false });
+    agg.apply("MESSAGE_CREATE", msg({ content: "", attachments: [], message_reference: { type: 0 } }), T0);
+    agg.recordReadySample(T0, { content: false, members: false });
+    flushAll(agg);
+    const [h] = hourly();
+    expect(h.messages).toBe(1);
+    expect(h.replies).toBe(1);
+    expect(h.msgs_with_content).toBe(0);
+    expect(h.msgs_nonempty).toBe(0);
+    const cov = store.get(2026, "guild").query("SELECT * FROM ingest_coverage_hourly").get() as any;
+    expect(cov).toMatchObject({ ready_samples: 1, content_intent_samples: 0, members_intent_samples: 0 });
+  });
+});

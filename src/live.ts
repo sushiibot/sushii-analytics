@@ -33,6 +33,7 @@ export interface LiveOptions {
   dataDir: string;
   flushIntervalMs: number;
   watchdogMs: number;
+  intents: { content: boolean; members: boolean };
   /** Called after a fatal condition so the process can exit and be restarted. */
   onFatal: () => void;
 }
@@ -45,7 +46,7 @@ export function startLive(client: Client, opts: LiveOptions) {
 
   const store = new Store(opts.dataDir);
   const privacy = openPrivacyDb(opts.dataDir);
-  const aggregator = new Aggregator();
+  const aggregator = new Aggregator({ messageContent: opts.intents.content });
   aggregator.setForgotten(loadSuppressed(privacy, "forget"));
   let overdue: string[] = [];
   let lastDispatch = Date.now();
@@ -136,7 +137,7 @@ export function startLive(client: Client, opts: LiveOptions) {
 
   const tick = setInterval(() => {
     const now = Date.now();
-    if (client.ws.status === 0) aggregator.recordReadySample(now);
+    if (client.ws.status === 0) aggregator.recordReadySample(now, opts.intents);
     doFlush();
 
     if (now - lastDispatch > opts.watchdogMs) {
