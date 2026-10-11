@@ -12,8 +12,8 @@ community.
 
 ## Who is responsible
 
-sushii-analytics is run by [TODO: name or handle], [TODO: country]. They are the data
-controller. Contact: contact@sushii.xyz.
+sushii-analytics is run by the sushii developers, based in the United States. They are the
+data controller. Contact: contact@sushii.xyz.
 
 ## Where the data comes from
 
@@ -157,10 +157,13 @@ to counts, and you can object at any time (see "Your rights").
 
 ## Security
 
-Access to the servers and backups is limited to the bot's operator. Backups are encrypted
-with AES-256 using a key we supply; Backblaze does not store the key. The files on our
-server are not encrypted at rest yet. We plan to fix this by [TODO: date] and will update
-this policy when it changes.
+Access to the servers and backups is limited to the bot's operator. Stored data is
+encrypted at rest:
+
+- On the server, it lives in an encrypted (LUKS2) container. The key is not stored on the
+  server.
+- Backups are encrypted with AES-256 using a key we supply; Backblaze does not store the
+  key.
 
 ## Children
 
