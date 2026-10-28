@@ -29,46 +29,15 @@ jobs:
 
   docker-build:
     needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
-    outputs:
-      image_version: ${{ steps.sha.outputs.sha_short }}
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Get short SHA
-        id: sha
-        run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.image }}:latest
-            ${{ env.image }}:${{ steps.sha.outputs.sha_short }}
-          cache-from: type=registry,ref=${{ env.image }}:buildcache
-          cache-to: type=registry,ref=${{ env.image }}:buildcache,mode=max
+      id-token: write
+      attestations: write
+    uses: sushiibot/sushii-workflows/.github/workflows/build-verified.yml@5584ab068ab9adf7918fac6263df307cdafbf106
+    with:
+      image_name: ghcr.io/sushiibot/sushii-analytics
 
   deploy:
     needs: docker-build
@@ -77,9 +46,14 @@ jobs:
       contents: read
       actions: read
       statuses: write
-    uses: sushiibot/sushii-workflows/.github/workflows/release-auto.yml@86493aecc426db554f9f3f220225516c01a9c110 # release preset
+      packages: read
+      id-token: write
+      attestations: write
+    uses: sushiibot/sushii-workflows/.github/workflows/release-auto.yml@5584ab068ab9adf7918fac6263df307cdafbf106
     with:
-      image_version: ${{ needs.docker-build.outputs.image_version }}
+      target: production
+      image_name: ghcr.io/sushiibot/sushii-analytics
+      artifact_digest: ${{ needs.docker-build.outputs.artifact_digest }}
       environment: production
       require_approval: true
     secrets:
