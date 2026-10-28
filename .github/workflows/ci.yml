@@ -9,8 +9,31 @@ on:
 env:
   image: ghcr.io/sushiibot/sushii-analytics
 
+permissions: {}
+
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun test
+
   docker-build:
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_version: ${{ steps.sha.outputs.sha_short }}
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
@@ -34,7 +57,7 @@ jobs:
       - name: Get short SHA
         id: sha
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -46,3 +69,18 @@ jobs:
             ${{ env.image }}:${{ steps.sha.outputs.sha_short }}
           cache-from: type=registry,ref=${{ env.image }}:buildcache
           cache-to: type=registry,ref=${{ env.image }}:buildcache,mode=max
+
+  deploy:
+    needs: docker-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      actions: read
+      statuses: write
+    uses: sushiibot/sushii-workflows/.github/workflows/release-auto.yml@86493aecc426db554f9f3f220225516c01a9c110 # release preset
+    with:
+      image_version: ${{ needs.docker-build.outputs.image_version }}
+      environment: production
+      require_approval: true
+    secrets:
+      SUSHII_CI_PRIVATE_KEY: ${{ secrets.SUSHII_CI_PRIVATE_KEY }}
